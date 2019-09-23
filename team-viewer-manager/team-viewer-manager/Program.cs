@@ -19,6 +19,20 @@ namespace team_viewer_manager {
                     throw new Exception("Login failed");
                 }
                 ConsoleWriteLineSuccess("Login successfully");
+
+                Console.WriteLine("Get devices ...");
+                var devices = await tvClient.GetDevices();
+                ConsoleWriteLineSuccess("Get devices successfully");
+                foreach (var device in devices) {
+                    Console.WriteLine($"----DeviceId: {device.DeviceId}");
+                    Console.WriteLine($"    RemoteControlId: {device.RemoteControlId}");
+                    Console.WriteLine($"    GroupId: {device.GroupId}");
+                    Console.WriteLine($"    Alias: {device.Alias}");
+                    Console.WriteLine($"    Description: {device.Description}");
+                    Console.WriteLine($"    OnlineState: {device.OnlineState}");
+                    Console.WriteLine($"    SupportedFeatures: {device.SupportedFeatures}");
+                    Console.WriteLine($"    IsAssignedToCurrentUser: {device.IsAssignedToCurrentUser}");
+                }
             } catch (Exception ex) {
                 ConsoleWriteLineError("Exception occured:");
                 ConsoleWriteLineError(ex.ToString());
