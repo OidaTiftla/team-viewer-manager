@@ -116,6 +116,58 @@ namespace team_viewer_manager.TeamViewer {
 
         #endregion Contacts
 
+        #region Groups
+
+        public async Task<List<Group>> GetGroups() {
+            var response = await this.client_.GetAsync("api/v1/groups");
+            if (response.StatusCode != System.Net.HttpStatusCode.OK) {
+                throw new Exception($"Get groups failed with status code {response.StatusCode} ({(int)response.StatusCode})");
+            }
+            var responseJson = await response.Content.ReadAsStringAsync();
+            dynamic responseJsonObject = JsonConvert.DeserializeObject(responseJson);
+            List<dynamic> groups = responseJsonObject.groups.ToObject<List<dynamic>>();
+            if (groups is null) {
+                throw new Exception($"Get groups failed.");
+            }
+            var result = new List<Group>();
+            foreach (var group in groups) {
+                var resultShares = new List<GroupShare>();
+                if (group.shared_with != null) {
+                    List<dynamic> shares = group.shared_with.ToObject<List<dynamic>>();
+                    if (shares != null) {
+                        foreach (var share in shares) {
+                            string sharePermissions = share.permissions;
+                            resultShares.Add(new GroupShare() {
+                                UserId = share.userid,
+                                Name = share.name,
+                                Permissions = this.convertToPermission_(sharePermissions),
+                                IsPending = share.pending,
+                            });
+                        }
+                    }
+                }
+                dynamic owner = group.owner;
+                GroupOwner resultOwner = null;
+                if (owner != null) {
+                    resultOwner = new GroupOwner() {
+                        UserId = owner.userid,
+                        Name = owner.name,
+                    };
+                }
+                string permissions = group.permissions;
+                result.Add(new Group() {
+                    GroupId = group.id,
+                    Name = group.name,
+                    SharedWith = resultShares,
+                    Owner = resultOwner,
+                    Permissions = this.convertToPermission_(permissions),
+                });
+            }
+            return result;
+        }
+
+        #endregion Groups
+
         #region helpers
 
         private OnlineState convertToOnlineState_(string value) {
@@ -152,6 +204,19 @@ namespace team_viewer_manager.TeamViewer {
                 result |= Feature.VideoCall;
             }
             return result;
+        }
+
+        private Permission convertToPermission_(string value) {
+            if (value?.ToLower()?.Trim() == "read") {
+                return Permission.Read;
+            } else if (value?.ToLower()?.Trim() == "read-write"
+                || value?.ToLower()?.Trim() == "readwrite") {
+                return Permission.ReadWrite;
+            } else if (value?.ToLower()?.Trim() == "owned") {
+                return Permission.Owned;
+            } else {
+                return Permission.Read;
+            }
         }
 
         #endregion helpers

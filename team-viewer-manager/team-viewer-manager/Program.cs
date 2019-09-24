@@ -47,6 +47,33 @@ namespace team_viewer_manager {
                     Console.WriteLine($"    ProfilePictureUrl: {contact.ProfilePictureUrl}");
                     Console.WriteLine($"    SupportedFeatures: {contact.SupportedFeatures}");
                 }
+
+                Console.WriteLine("Get groups ...");
+                var groups = await tvClient.GetGroups();
+                ConsoleWriteLineSuccess("Get groups successfully");
+                foreach (var group in groups) {
+                    Console.WriteLine($"----GroupId: {group.GroupId}");
+                    Console.WriteLine($"    Name: {group.Name}");
+                    if (group.SharedWith is null) {
+                        Console.WriteLine($"    SharedWith: <null>");
+                    } else {
+                        Console.WriteLine($"    SharedWith:");
+                        foreach (var share in group.SharedWith) {
+                            Console.WriteLine($"    ----UserId: {share.UserId}");
+                            Console.WriteLine($"        Name: {share.Name}");
+                            Console.WriteLine($"        Permissions: {share.Permissions}");
+                            Console.WriteLine($"        IsPending: {share.IsPending}");
+                        }
+                    }
+                    if (group.Owner is null) {
+                        Console.WriteLine($"    Owner: <null>");
+                    } else {
+                        Console.WriteLine($"    Owner:");
+                        Console.WriteLine($"    ----UserId: {group.Owner.UserId}");
+                        Console.WriteLine($"        Name: {group.Owner.Name}");
+                    }
+                    Console.WriteLine($"    Permissions: {group.Permissions}");
+                }
             } catch (Exception ex) {
                 ConsoleWriteLineError("Exception occurred:");
                 ConsoleWriteLineError(ex.ToString());
