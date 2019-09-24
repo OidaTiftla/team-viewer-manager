@@ -33,6 +33,9 @@ namespace team_viewer_manager {
                 Console.WriteLine("What do you want to do?");
                 Console.WriteLine("  1: export devices and groups (export.json)");
                 Console.WriteLine("  2: import devices and groups (import.json or export.json)");
+                Console.WriteLine("  3: delete all devices");
+                Console.WriteLine("  4: delete all contacts");
+                Console.WriteLine("  5: delete all groups (will also delete all devices and contacts)");
                 Console.WriteLine("  else: quit and exit the program");
                 var answer = Console.ReadLine().Trim();
                 switch (answer) {
@@ -42,6 +45,18 @@ namespace team_viewer_manager {
 
                     case "2":
                         await import(tvClient);
+                        break;
+
+                    case "3":
+                        await deleteAllDevices(tvClient);
+                        break;
+
+                    case "4":
+                        await deleteAllContacts(tvClient);
+                        break;
+
+                    case "5":
+                        await deleteAllGroups(tvClient);
                         break;
                 }
             } catch (Exception ex) {
@@ -193,6 +208,81 @@ namespace team_viewer_manager {
                 List<Device> devicesJson = group.devices.ToObject<List<Device>>();
                 devices.AddRange(devicesJson);
             }
+        }
+
+        private static async Task<bool> deleteAllDevices(TeamViewerApiClient tvClient) {
+            Console.WriteLine("Get existing devices ...");
+            var existingDevices = await tvClient.GetDevices();
+            ConsoleWriteLineSuccess("Get existing devices successfully");
+            print(existingDevices);
+
+            Console.Write("Are you sure to delete all devices? (y/N): ");
+            var answer = Console.ReadLine().Trim();
+            if (answer == "y"
+                || answer == "Y") {
+                foreach (var device in existingDevices) {
+                    print(device);
+                    await tvClient.DeleteDevice(device.DeviceId);
+                }
+                ConsoleWriteLineSuccess("Delete all devices successfully");
+                return true;
+            }
+            Console.Write("The user aborted.");
+            return false;
+        }
+
+        private static async Task<bool> deleteAllContacts(TeamViewerApiClient tvClient) {
+            Console.WriteLine("Get existing contacts ...");
+            var existingContacts = await tvClient.GetContacts();
+            ConsoleWriteLineSuccess("Get existing contacts successfully");
+            print(existingContacts);
+
+            Console.Write("Are you sure to delete all contacts? (y/N): ");
+            var answer = Console.ReadLine().Trim();
+            if (answer == "y"
+                || answer == "Y") {
+                foreach (var contact in existingContacts) {
+                    print(contact);
+                    await tvClient.DeleteContact(contact.ContactId);
+                }
+                ConsoleWriteLineSuccess("Delete all contacts successfully");
+                return true;
+            }
+            Console.Write("The user aborted.");
+            return false;
+        }
+
+        private static async Task<bool> deleteAllGroups(TeamViewerApiClient tvClient) {
+            if (!await deleteAllDevices(tvClient)) {
+                return false;
+            }
+            if (!await deleteAllContacts(tvClient)) {
+                return false;
+            }
+
+            Console.WriteLine("Get existing groups ...");
+            var existingGroups = await tvClient.GetGroups();
+            ConsoleWriteLineSuccess("Get existing groups successfully");
+            print(existingGroups);
+
+            Console.Write("Are you sure to delete all devices? (y/N): ");
+            var answer = Console.ReadLine().Trim();
+            if (answer == "y"
+                || answer == "Y") {
+                foreach (var group in existingGroups) {
+                    //if (group.Name == "Meine Computer"
+                    //    || group.Name == "My computers") {
+                    //    ConsoleWriteLineWarning("Skip default group.");
+                    //    continue;
+                    //}
+                    print(group);
+                    await tvClient.DeleteGroup(group.GroupId);
+                }
+                ConsoleWriteLineSuccess("Delete all groups successfully");
+                return true;
+            }
+            Console.Write("The user aborted.");
+            return false;
         }
 
         #region console helpers
