@@ -12,7 +12,7 @@ Console program to access the TeamViewer API and manage your devices, contacts a
 
 ### Get TeamViewer authorization token
 
-1. Login to (TeamViewer Management Console)[https://login.teamviewer.com].
+1. Login to [TeamViewer Management Console](https://login.teamviewer.com).
 2. Click on your profile and select `Edit profile`.
 3. Click on `Apps`.
 4. Click on `Create script-token`.
