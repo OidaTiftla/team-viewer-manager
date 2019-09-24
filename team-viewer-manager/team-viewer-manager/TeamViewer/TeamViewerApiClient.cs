@@ -146,7 +146,7 @@ namespace team_viewer_manager.TeamViewer {
                     Encoding.UTF8,
                     "application/json"));
             if (response.StatusCode != System.Net.HttpStatusCode.OK
-               || response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+               && response.StatusCode != System.Net.HttpStatusCode.NoContent) {
                 throw new Exception($"Update device failed with status code {response.StatusCode} ({(int)response.StatusCode})");
             }
             return true;
@@ -155,7 +155,7 @@ namespace team_viewer_manager.TeamViewer {
         public async Task<bool> DeleteDevice(string deviceId) {
             var response = await this.client_.DeleteAsync($"api/v1/devices/{deviceId}");
             if (response.StatusCode != System.Net.HttpStatusCode.OK
-               || response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+               && response.StatusCode != System.Net.HttpStatusCode.NoContent) {
                 throw new Exception($"Update device failed with status code {response.StatusCode} ({(int)response.StatusCode})");
             }
             return true;
@@ -274,7 +274,7 @@ namespace team_viewer_manager.TeamViewer {
                     Encoding.UTF8,
                     "application/json"));
             if (response.StatusCode != System.Net.HttpStatusCode.OK
-               || response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+               && response.StatusCode != System.Net.HttpStatusCode.NoContent) {
                 throw new Exception($"Rename group failed with status code {response.StatusCode} ({(int)response.StatusCode})");
             }
             return true;
@@ -283,7 +283,7 @@ namespace team_viewer_manager.TeamViewer {
         public async Task<bool> DeleteGroup(string groupId) {
             var response = await this.client_.DeleteAsync($"api/v1/groups/{groupId}");
             if (response.StatusCode != System.Net.HttpStatusCode.OK
-               || response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+               && response.StatusCode != System.Net.HttpStatusCode.NoContent) {
                 throw new Exception($"Delete group failed with status code {response.StatusCode} ({(int)response.StatusCode})");
             }
             return true;
@@ -306,7 +306,7 @@ namespace team_viewer_manager.TeamViewer {
                     Encoding.UTF8,
                     "application/json"));
             if (response.StatusCode != System.Net.HttpStatusCode.OK
-               || response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+               && response.StatusCode != System.Net.HttpStatusCode.NoContent) {
                 throw new Exception($"Share group failed with status code {response.StatusCode} ({(int)response.StatusCode})");
             }
             return true;
@@ -323,7 +323,7 @@ namespace team_viewer_manager.TeamViewer {
                     Encoding.UTF8,
                     "application/json"));
             if (response.StatusCode != System.Net.HttpStatusCode.OK
-               || response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+               && response.StatusCode != System.Net.HttpStatusCode.NoContent) {
                 throw new Exception($"Unshare group failed with status code {response.StatusCode} ({(int)response.StatusCode})");
             }
             return true;
