@@ -15,6 +15,12 @@ namespace team_viewer_manager {
             if (!tryGetAuthorizationToken(out var token)) {
                 Console.Write("Please type the authorization token: ");
                 token = Console.ReadLine().Trim();
+                Console.Write("Remember this authorization token? (y/N): ");
+                var answer = Console.ReadLine().Trim();
+                if (answer == "y"
+                    || answer == "Y") {
+                    saveAuthorizationToken(token);
+                }
             }
 
             try {
@@ -24,62 +30,20 @@ namespace team_viewer_manager {
                 }
                 ConsoleWriteLineSuccess("Login successfully");
 
-                Console.WriteLine("Get devices ...");
-                var devices = await tvClient.GetDevices();
-                ConsoleWriteLineSuccess("Get devices successfully");
-                foreach (var device in devices) {
-                    Console.WriteLine($"----DeviceId: {device.DeviceId}");
-                    Console.WriteLine($"    RemoteControlId: {device.RemoteControlId}");
-                    Console.WriteLine($"    GroupId: {device.GroupId}");
-                    Console.WriteLine($"    Alias: {device.Alias}");
-                    Console.WriteLine($"    Description: {device.Description}");
-                    Console.WriteLine($"    OnlineState: {device.OnlineState}");
-                    Console.WriteLine($"    SupportedFeatures: {device.SupportedFeatures}");
-                    Console.WriteLine($"    IsAssignedToCurrentUser: {device.IsAssignedToCurrentUser}");
-                }
+                Console.WriteLine("What do you want to do?");
+                Console.WriteLine("  1: export devices and groups (export.json)");
+                Console.WriteLine("  2: import devices and groups (import.json or export.json)");
+                Console.WriteLine("  else: quit and exit the program");
+                var answer = Console.ReadLine().Trim();
+                switch (answer) {
+                    case "1":
+                        await export(tvClient);
+                        break;
 
-                Console.WriteLine("Get contacts ...");
-                var contacts = await tvClient.GetContacts();
-                ConsoleWriteLineSuccess("Get contacts successfully");
-                foreach (var contact in contacts) {
-                    Console.WriteLine($"----ContactId: {contact.ContactId}");
-                    Console.WriteLine($"    UserId: {contact.UserId}");
-                    Console.WriteLine($"    Name: {contact.Name}");
-                    Console.WriteLine($"    GroupId: {contact.GroupId}");
-                    Console.WriteLine($"    Description: {contact.Description}");
-                    Console.WriteLine($"    OnlineState: {contact.OnlineState}");
-                    Console.WriteLine($"    ProfilePictureUrl: {contact.ProfilePictureUrl}");
-                    Console.WriteLine($"    SupportedFeatures: {contact.SupportedFeatures}");
+                    case "2":
+                        await import(tvClient);
+                        break;
                 }
-
-                Console.WriteLine("Get groups ...");
-                var groups = await tvClient.GetGroups();
-                ConsoleWriteLineSuccess("Get groups successfully");
-                foreach (var group in groups) {
-                    Console.WriteLine($"----GroupId: {group.GroupId}");
-                    Console.WriteLine($"    Name: {group.Name}");
-                    if (group.SharedWith is null) {
-                        Console.WriteLine($"    SharedWith: <null>");
-                    } else {
-                        Console.WriteLine($"    SharedWith:");
-                        foreach (var share in group.SharedWith) {
-                            Console.WriteLine($"    ----UserId: {share.UserId}");
-                            Console.WriteLine($"        Name: {share.Name}");
-                            Console.WriteLine($"        Permissions: {share.Permissions}");
-                            Console.WriteLine($"        IsPending: {share.IsPending}");
-                        }
-                    }
-                    if (group.Owner is null) {
-                        Console.WriteLine($"    Owner: <null>");
-                    } else {
-                        Console.WriteLine($"    Owner:");
-                        Console.WriteLine($"    ----UserId: {group.Owner.UserId}");
-                        Console.WriteLine($"        Name: {group.Owner.Name}");
-                    }
-                    Console.WriteLine($"    Permissions: {group.Permissions}");
-                }
-
-                export(new FileInfo("export.json"), groups, contacts, devices);
             } catch (Exception ex) {
                 ConsoleWriteLineError("Exception occurred:");
                 ConsoleWriteLineError(ex.ToString());
@@ -95,7 +59,32 @@ namespace team_viewer_manager {
             return false;
         }
 
-        private static void export(FileInfo file, List<Group> groups, List<Contact> contacts, List<Device> devices) {
+        private static void saveAuthorizationToken(string token) {
+            File.WriteAllText("authorization.token", token);
+        }
+
+        private static async Task export(TeamViewerApiClient tvClient) {
+            Console.WriteLine("Get devices ...");
+            var devices = await tvClient.GetDevices();
+            ConsoleWriteLineSuccess("Get devices successfully");
+            print(devices);
+
+            Console.WriteLine("Get contacts ...");
+            var contacts = await tvClient.GetContacts();
+            ConsoleWriteLineSuccess("Get contacts successfully");
+            print(contacts);
+
+            Console.WriteLine("Get groups ...");
+            var groups = await tvClient.GetGroups();
+            ConsoleWriteLineSuccess("Get groups successfully");
+            print(groups);
+
+            Console.WriteLine("Export ...");
+            exportToFile(new FileInfo("export.json"), groups, contacts, devices);
+            ConsoleWriteLineSuccess("Export successfully");
+        }
+
+        private static void exportToFile(FileInfo file, List<Group> groups, List<Contact> contacts, List<Device> devices) {
             var o = new {
                 groups = groups.Select(group => new {
                     group.GroupId,
@@ -112,10 +101,108 @@ namespace team_viewer_manager {
             File.WriteAllText(file.FullName, JsonConvert.SerializeObject(o, Formatting.Indented, settings));
         }
 
+        private static async Task import(TeamViewerApiClient tvClient) {
+            Console.WriteLine("Get existing devices ...");
+            var existingDevices = await tvClient.GetDevices();
+            ConsoleWriteLineSuccess("Get existing devices successfully");
+            print(existingDevices);
+
+            Console.WriteLine("Get existing contacts ...");
+            var existingContacts = await tvClient.GetContacts();
+            ConsoleWriteLineSuccess("Get existing contacts successfully");
+            print(existingContacts);
+
+            Console.WriteLine("Get existing groups ...");
+            var existingGroups = await tvClient.GetGroups();
+            ConsoleWriteLineSuccess("Get existing groups successfully");
+            print(existingGroups);
+
+            Console.WriteLine("Import ...");
+            FileInfo file;
+            if (File.Exists("import.json")) {
+                file = new FileInfo("import.json");
+            } else if (File.Exists("export.json")) {
+                file = new FileInfo("export.json");
+            } else {
+                throw new Exception("No file found to import (import.json or export.json). It must be in the working directory (by default it is the same as the *.exe file).");
+            }
+            importFromFile(file, out var importGroups, out var importContacts, out var importDevices);
+            ConsoleWriteLineSuccess("Read import file successfully");
+
+            Console.WriteLine("Import groups ...");
+            var alreadyExistingGroups = importGroups.Where(x => existingGroups.Any(y => y.GroupId == x.GroupId || y.Name == x.Name)).ToList();
+            var newGroups = importGroups.Except(alreadyExistingGroups).ToList();
+            foreach (var group in newGroups) {
+                Console.WriteLine($"Import group {group.Name} ...");
+                print(group);
+                var newGroup = await tvClient.AddGroup(group.Name);
+                existingGroups.Add(newGroup);
+                ConsoleWriteLineSuccess($"Import group {group.Name} successfully");
+                print(newGroup);
+            }
+            ConsoleWriteLineSuccess("Import groups successfully");
+
+            Console.WriteLine("Import devices ...");
+            var alreadyExistingDevices = importDevices.Where(x => existingDevices.Any(y => y.DeviceId == x.DeviceId || y.RemoteControlId == x.RemoteControlId)).ToList();
+            var newDevices = importDevices.Except(alreadyExistingDevices).ToList();
+            foreach (var device in newDevices) {
+                Console.WriteLine($"Import device {device.RemoteControlId} ...");
+                print(device);
+                var groupName = importGroups.First(x => x.GroupId == device.GroupId).Name;
+                var newGroupId = existingGroups.First(x => x.Name == groupName).GroupId;
+                var newDevice = await tvClient.AddDevice(
+                    remoteControlId: device.RemoteControlId,
+                    groupId: newGroupId,
+                    description: device.Description,
+                    alias: device.Alias);
+                existingDevices.Add(newDevice);
+                ConsoleWriteLineSuccess($"Import device {device.RemoteControlId} successfully");
+                print(newDevice);
+            }
+            ConsoleWriteLineSuccess("Import devices successfully");
+
+            if (importContacts.Any()) {
+                ConsoleWriteLineWarning("Import contacts is not supported. Skipping them.");
+                print(importContacts);
+                Console.Write("Press ENTER to continue ...");
+                Console.ReadLine();
+            }
+
+            ConsoleWriteLineSuccess("Import successfully");
+        }
+
+        private static void importFromFile(FileInfo file, out List<Group> groups, out List<Contact> contacts, out List<Device> devices) {
+            groups = new List<Group>();
+            contacts = new List<Contact>();
+            devices = new List<Device>();
+
+            var settings = new JsonSerializerSettings() { };
+            settings.Converters.Add(new StringEnumConverter());
+            dynamic o = JsonConvert.DeserializeObject(File.ReadAllText(file.FullName), settings);
+            List<dynamic> groupsJson = o.groups.ToObject<List<dynamic>>();
+            foreach (var group in groupsJson) {
+                groups.Add(new Group() {
+                    GroupId = group.GroupId,
+                    Name = group.Name,
+                    SharedWith = group.SharedWith.ToObject<List<GroupShare>>(),
+                    Owner = group.Owner.ToObject<GroupOwner>(),
+                    Permissions = group.Permissions.ToObject<Permission>(),
+                });
+                List<Contact> contactsJson = group.contacts.ToObject<List<Contact>>();
+                contacts.AddRange(contactsJson);
+                List<Device> devicesJson = group.devices.ToObject<List<Device>>();
+                devices.AddRange(devicesJson);
+            }
+        }
+
         #region console helpers
 
         private static void ConsoleWriteLineSuccess(string text) {
             ConsoleWriteLineColor(text, ConsoleColor.DarkGreen);
+        }
+
+        private static void ConsoleWriteLineWarning(string text) {
+            ConsoleWriteLineColor(text, ConsoleColor.DarkYellow);
         }
 
         private static void ConsoleWriteLineError(string text) {
@@ -130,6 +217,70 @@ namespace team_viewer_manager {
             } finally {
                 Console.ForegroundColor = oldColor;
             }
+        }
+
+        private static void print(List<Device> devices) {
+            foreach (var device in devices) {
+                print(device);
+            }
+        }
+
+        private static void print(Device device) {
+            Console.WriteLine($"----DeviceId: {device.DeviceId}");
+            Console.WriteLine($"    RemoteControlId: {device.RemoteControlId}");
+            Console.WriteLine($"    GroupId: {device.GroupId}");
+            Console.WriteLine($"    Alias: {device.Alias}");
+            Console.WriteLine($"    Description: {device.Description}");
+            Console.WriteLine($"    OnlineState: {device.OnlineState}");
+            Console.WriteLine($"    SupportedFeatures: {device.SupportedFeatures}");
+            Console.WriteLine($"    IsAssignedToCurrentUser: {device.IsAssignedToCurrentUser}");
+        }
+
+        private static void print(List<Contact> contacts) {
+            foreach (var contact in contacts) {
+                print(contact);
+            }
+        }
+
+        private static void print(Contact contact) {
+            Console.WriteLine($"----ContactId: {contact.ContactId}");
+            Console.WriteLine($"    UserId: {contact.UserId}");
+            Console.WriteLine($"    Name: {contact.Name}");
+            Console.WriteLine($"    GroupId: {contact.GroupId}");
+            Console.WriteLine($"    Description: {contact.Description}");
+            Console.WriteLine($"    OnlineState: {contact.OnlineState}");
+            Console.WriteLine($"    ProfilePictureUrl: {contact.ProfilePictureUrl}");
+            Console.WriteLine($"    SupportedFeatures: {contact.SupportedFeatures}");
+        }
+
+        private static void print(List<Group> groups) {
+            foreach (var group in groups) {
+                print(group);
+            }
+        }
+
+        private static void print(Group group) {
+            Console.WriteLine($"----GroupId: {group.GroupId}");
+            Console.WriteLine($"    Name: {group.Name}");
+            if (group.SharedWith is null) {
+                Console.WriteLine($"    SharedWith: <null>");
+            } else {
+                Console.WriteLine($"    SharedWith:");
+                foreach (var share in group.SharedWith) {
+                    Console.WriteLine($"    ----UserId: {share.UserId}");
+                    Console.WriteLine($"        Name: {share.Name}");
+                    Console.WriteLine($"        Permissions: {share.Permissions}");
+                    Console.WriteLine($"        IsPending: {share.IsPending}");
+                }
+            }
+            if (group.Owner is null) {
+                Console.WriteLine($"    Owner: <null>");
+            } else {
+                Console.WriteLine($"    Owner:");
+                Console.WriteLine($"    ----UserId: {group.Owner.UserId}");
+                Console.WriteLine($"        Name: {group.Owner.Name}");
+            }
+            Console.WriteLine($"    Permissions: {group.Permissions}");
         }
 
         #endregion console helpers

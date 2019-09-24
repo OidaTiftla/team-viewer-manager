@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace team_viewer_manager.TeamViewer {
@@ -79,6 +80,85 @@ namespace team_viewer_manager.TeamViewer {
                 });
             }
             return result;
+        }
+
+        public async Task<Device> AddDevice(string remoteControlId, string groupId, string description = null, string alias = null, string password = null) {
+            var o = new Dictionary<string, object>() {
+                { "remotecontrol_id", remoteControlId },
+                { "groupid" , groupId },
+            };
+            if (description != null) {
+                o.Add("description", description);
+            }
+            if (alias != null) {
+                o.Add("alias", alias);
+            }
+            if (password != null) {
+                o.Add("password", password);
+            }
+            var response = await this.client_.PostAsync(
+                "api/v1/devices",
+                new StringContent(
+                    JsonConvert.SerializeObject(o),
+                    Encoding.UTF8,
+                    "application/json"));
+            if (response.StatusCode != System.Net.HttpStatusCode.OK) {
+                throw new Exception($"Add device failed with status code {response.StatusCode} ({(int)response.StatusCode})");
+            }
+            var responseJson = await response.Content.ReadAsStringAsync();
+            dynamic responseJsonObject = JsonConvert.DeserializeObject(responseJson);
+            string onlineState = responseJsonObject.online_state;
+            string supportedFeatures = responseJsonObject.supported_features;
+            return new Device() {
+                DeviceId = responseJsonObject.device_id,
+                RemoteControlId = responseJsonObject.remotecontrol_id,
+                GroupId = responseJsonObject.groupid,
+                Alias = responseJsonObject.alias,
+                Description = responseJsonObject.description,
+                OnlineState = this.convertToOnlineState_(onlineState),
+                SupportedFeatures = this.convertToSupportedFeatures_(supportedFeatures),
+                IsAssignedToCurrentUser = responseJsonObject.assigned_to,
+            };
+        }
+
+        public async Task<bool> UpdateDevice(string deviceId, string alias = null, string description = null, string password = null, string groupId = null) {
+            var o = new Dictionary<string, object>() { };
+            if (alias != null) {
+                o.Add("alias", alias);
+            }
+            if (description != null) {
+                o.Add("description", description);
+            }
+            if (password != null) {
+                o.Add("password", password);
+            }
+            if (groupId != null) {
+                o.Add("groupid", groupId);
+            }
+            if (!o.Any()) {
+                // nothing to update
+                return true;
+            }
+            var response = await this.client_.PutAsync(
+                $"api/v1/devices/{deviceId}",
+                new StringContent(
+                    JsonConvert.SerializeObject(o),
+                    Encoding.UTF8,
+                    "application/json"));
+            if (response.StatusCode != System.Net.HttpStatusCode.OK
+               || response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+                throw new Exception($"Update device failed with status code {response.StatusCode} ({(int)response.StatusCode})");
+            }
+            return true;
+        }
+
+        public async Task<bool> DeleteDevice(string deviceId) {
+            var response = await this.client_.DeleteAsync($"api/v1/devices/{deviceId}");
+            if (response.StatusCode != System.Net.HttpStatusCode.OK
+               || response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+                throw new Exception($"Update device failed with status code {response.StatusCode} ({(int)response.StatusCode})");
+            }
+            return true;
         }
 
         #endregion Devices
@@ -166,6 +246,89 @@ namespace team_viewer_manager.TeamViewer {
             return result;
         }
 
+        public async Task<Group> AddGroup(string groupName) {
+            var response = await this.client_.PostAsync(
+                "api/v1/groups",
+                new StringContent(
+                    JsonConvert.SerializeObject(new { name = groupName }),
+                    Encoding.UTF8,
+                    "application/json"));
+            if (response.StatusCode != System.Net.HttpStatusCode.OK) {
+                throw new Exception($"Add group failed with status code {response.StatusCode} ({(int)response.StatusCode})");
+            }
+            var responseJson = await response.Content.ReadAsStringAsync();
+            dynamic responseJsonObject = JsonConvert.DeserializeObject(responseJson);
+            string permissions = responseJsonObject.permissions;
+            return new Group() {
+                GroupId = responseJsonObject.id,
+                Name = responseJsonObject.name,
+                Permissions = this.convertToPermission_(permissions),
+            };
+        }
+
+        public async Task<bool> RenameGroup(string groupId, string newName) {
+            var response = await this.client_.PutAsync(
+                $"api/v1/groups/{groupId}",
+                new StringContent(
+                    JsonConvert.SerializeObject(new { name = newName }),
+                    Encoding.UTF8,
+                    "application/json"));
+            if (response.StatusCode != System.Net.HttpStatusCode.OK
+               || response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+                throw new Exception($"Rename group failed with status code {response.StatusCode} ({(int)response.StatusCode})");
+            }
+            return true;
+        }
+
+        public async Task<bool> DeleteGroup(string groupId) {
+            var response = await this.client_.DeleteAsync($"api/v1/groups/{groupId}");
+            if (response.StatusCode != System.Net.HttpStatusCode.OK
+               || response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+                throw new Exception($"Delete group failed with status code {response.StatusCode} ({(int)response.StatusCode})");
+            }
+            return true;
+        }
+
+        public async Task<bool> ShareGroup(string groupId, IDictionary<string, Permission> userIdsAndPermissions) {
+            var o = new {
+                users = userIdsAndPermissions
+                    .Select(user =>
+                        new {
+                            userid = user.Key,
+                            permissions = convertPermissionToString_(user.Value, allowOwned: false)
+                        })
+                    .ToList(),
+            };
+            var response = await this.client_.PostAsync(
+                $"api/v1/groups/{groupId}/share_group",
+                new StringContent(
+                    JsonConvert.SerializeObject(o),
+                    Encoding.UTF8,
+                    "application/json"));
+            if (response.StatusCode != System.Net.HttpStatusCode.OK
+               || response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+                throw new Exception($"Share group failed with status code {response.StatusCode} ({(int)response.StatusCode})");
+            }
+            return true;
+        }
+
+        public async Task<bool> UnshareGroup(string groupId, IEnumerable<string> userIds) {
+            var o = new {
+                users = userIds.ToList(),
+            };
+            var response = await this.client_.PostAsync(
+                $"api/v1/groups/{groupId}/unshare_group",
+                new StringContent(
+                    JsonConvert.SerializeObject(o),
+                    Encoding.UTF8,
+                    "application/json"));
+            if (response.StatusCode != System.Net.HttpStatusCode.OK
+               || response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+                throw new Exception($"Unshare group failed with status code {response.StatusCode} ({(int)response.StatusCode})");
+            }
+            return true;
+        }
+
         #endregion Groups
 
         #region helpers
@@ -216,6 +379,25 @@ namespace team_viewer_manager.TeamViewer {
                 return Permission.Owned;
             } else {
                 return Permission.Read;
+            }
+        }
+
+        private string convertPermissionToString_(Permission value, bool allowOwned = true) {
+            switch (value) {
+                case Permission.Read:
+                    return "read";
+
+                case Permission.ReadWrite:
+                    return "readwrite";
+
+                case Permission.Owned:
+                    if (!allowOwned) {
+                        throw new Exception($"{nameof(Permission.Owned)} is not allowed.");
+                    }
+                    return "owned";
+
+                default:
+                    throw new Exception($"Unknown value '{value}',");
             }
         }
 
