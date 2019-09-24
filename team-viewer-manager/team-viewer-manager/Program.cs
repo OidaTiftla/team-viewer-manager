@@ -63,6 +63,9 @@ namespace team_viewer_manager {
                 ConsoleWriteLineError("Exception occurred:");
                 ConsoleWriteLineError(ex.ToString());
             }
+
+            Console.Write("Press ENTER to exit ...");
+            Console.ReadLine();
         }
 
         private static bool tryGetAuthorizationToken(out string token) {
