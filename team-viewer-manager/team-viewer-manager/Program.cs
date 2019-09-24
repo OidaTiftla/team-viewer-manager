@@ -1,5 +1,9 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using team_viewer_manager.TeamViewer;
 
@@ -74,6 +78,8 @@ namespace team_viewer_manager {
                     }
                     Console.WriteLine($"    Permissions: {group.Permissions}");
                 }
+
+                export(new FileInfo("export.json"), groups, contacts, devices);
             } catch (Exception ex) {
                 ConsoleWriteLineError("Exception occurred:");
                 ConsoleWriteLineError(ex.ToString());
@@ -87,6 +93,23 @@ namespace team_viewer_manager {
             }
             token = null;
             return false;
+        }
+
+        private static void export(FileInfo file, List<Group> groups, List<Contact> contacts, List<Device> devices) {
+            var o = new {
+                groups = groups.Select(group => new {
+                    group.GroupId,
+                    group.Name,
+                    group.SharedWith,
+                    group.Owner,
+                    group.Permissions,
+                    contacts = contacts.Where(contact => contact.GroupId == group.GroupId).ToList(),
+                    devices = devices.Where(device => device.GroupId == group.GroupId).ToList(),
+                }),
+            };
+            var settings = new JsonSerializerSettings() { };
+            settings.Converters.Add(new StringEnumConverter());
+            File.WriteAllText(file.FullName, JsonConvert.SerializeObject(o, Formatting.Indented, settings));
         }
 
         #region console helpers
