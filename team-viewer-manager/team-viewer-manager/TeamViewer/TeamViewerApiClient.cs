@@ -194,6 +194,15 @@ namespace team_viewer_manager.TeamViewer {
             return result;
         }
 
+        public async Task<bool> DeleteContact(string contactId) {
+            var response = await this.client_.DeleteAsync($"api/v1/contacts/{contactId}");
+            if (response.StatusCode != System.Net.HttpStatusCode.OK
+               && response.StatusCode != System.Net.HttpStatusCode.NoContent) {
+                throw new Exception($"Update contact failed with status code {response.StatusCode} ({(int)response.StatusCode})");
+            }
+            return true;
+        }
+
         #endregion Contacts
 
         #region Groups
