@@ -48,7 +48,7 @@ namespace team_viewer_manager {
                     Console.WriteLine($"    SupportedFeatures: {contact.SupportedFeatures}");
                 }
             } catch (Exception ex) {
-                ConsoleWriteLineError("Exception occured:");
+                ConsoleWriteLineError("Exception occurred:");
                 ConsoleWriteLineError(ex.ToString());
             }
         }
