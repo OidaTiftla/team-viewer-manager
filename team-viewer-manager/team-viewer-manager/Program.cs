@@ -33,6 +33,20 @@ namespace team_viewer_manager {
                     Console.WriteLine($"    SupportedFeatures: {device.SupportedFeatures}");
                     Console.WriteLine($"    IsAssignedToCurrentUser: {device.IsAssignedToCurrentUser}");
                 }
+
+                Console.WriteLine("Get contacts ...");
+                var contacts = await tvClient.GetContacts();
+                ConsoleWriteLineSuccess("Get contacts successfully");
+                foreach (var contact in contacts) {
+                    Console.WriteLine($"----ContactId: {contact.ContactId}");
+                    Console.WriteLine($"    UserId: {contact.UserId}");
+                    Console.WriteLine($"    Name: {contact.Name}");
+                    Console.WriteLine($"    GroupId: {contact.GroupId}");
+                    Console.WriteLine($"    Description: {contact.Description}");
+                    Console.WriteLine($"    OnlineState: {contact.OnlineState}");
+                    Console.WriteLine($"    ProfilePictureUrl: {contact.ProfilePictureUrl}");
+                    Console.WriteLine($"    SupportedFeatures: {contact.SupportedFeatures}");
+                }
             } catch (Exception ex) {
                 ConsoleWriteLineError("Exception occured:");
                 ConsoleWriteLineError(ex.ToString());

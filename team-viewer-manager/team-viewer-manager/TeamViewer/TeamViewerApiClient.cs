@@ -81,9 +81,50 @@ namespace team_viewer_manager.TeamViewer {
             return result;
         }
 
+        #endregion Devices
+
+        #region Contacts
+
+        public async Task<List<Contact>> GetContacts() {
+            var response = await this.client_.GetAsync("api/v1/contacts");
+            if (response.StatusCode != System.Net.HttpStatusCode.OK) {
+                throw new Exception($"Get contacts failed with status code {response.StatusCode} ({(int)response.StatusCode})");
+            }
+            var responseJson = await response.Content.ReadAsStringAsync();
+            dynamic responseJsonObject = JsonConvert.DeserializeObject(responseJson);
+            List<dynamic> contacts = responseJsonObject.contacts.ToObject<List<dynamic>>();
+            if (contacts is null) {
+                throw new Exception($"Get contacts failed.");
+            }
+            var result = new List<Contact>();
+            foreach (var contact in contacts) {
+                string onlineState = contact.online_state;
+                string supportedFeatures = contact.supported_features;
+                result.Add(new Contact() {
+                    ContactId = contact.contact_id,
+                    UserId = contact.user_id,
+                    Name = contact.name,
+                    GroupId = contact.groupid,
+                    Description = contact.description,
+                    OnlineState = this.convertToOnlineState_(onlineState),
+                    ProfilePictureUrl = contact.profilepicture_url,
+                    SupportedFeatures = this.convertToSupportedFeatures_(supportedFeatures),
+                });
+            }
+            return result;
+        }
+
+        #endregion Contacts
+
+        #region helpers
+
         private OnlineState convertToOnlineState_(string value) {
             if (value?.ToLower()?.Trim() == "online") {
                 return OnlineState.Online;
+            } else if (value?.ToLower()?.Trim() == "busy") {
+                return OnlineState.Busy;
+            } else if (value?.ToLower()?.Trim() == "away") {
+                return OnlineState.Away;
             } else {
                 return OnlineState.Offline;
             }
@@ -104,9 +145,15 @@ namespace team_viewer_manager.TeamViewer {
             if (value.Contains("remote_control")) {
                 result |= Feature.RemoteControl;
             }
+            if (value.Contains("meeting")) {
+                result |= Feature.Meeting;
+            }
+            if (value.Contains("videocall")) {
+                result |= Feature.VideoCall;
+            }
             return result;
         }
 
-        #endregion Devices
+        #endregion helpers
     }
 }

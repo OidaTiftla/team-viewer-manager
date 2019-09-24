@@ -1,18 +1,4 @@
-﻿using System;
-
-namespace team_viewer_manager.TeamViewer {
-
-    public enum OnlineState {
-        Online,
-        Offline,
-    }
-
-    [Flags]
-    public enum Feature {
-        None = 0,
-        Chat = 1,
-        RemoteControl = 2,
-    }
+﻿namespace team_viewer_manager.TeamViewer {
 
     public class Device {
 
