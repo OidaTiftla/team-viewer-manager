@@ -8,6 +8,10 @@ Console program to access the TeamViewer API and manage your devices, contacts a
 
 [Example of API usage](https://community.spiceworks.com/topic/2149517-is-it-possible-to-export-a-list-of-computers-from-teamviewer)
 
+## Notes
+
+The TeamViewer API currently does not support export of passwords.
+
 ## HowTo use it
 
 ### Get TeamViewer authorization token
@@ -55,3 +59,5 @@ To do this you need two tokens. One for each account. (Remember which token belo
 7. For the question `Remember this authorization token?` enter `n`.
 8. For the question `What do you want to do?` enter `2`, to import all computers. Contacts are currently not possible to import (because the TeamViewer API needs the email addresses to add them, but does not export them).
 9. You are finished. Congratulations!
+
+The TeamViewer API currently does not support export of passwords.
