@@ -230,7 +230,7 @@ namespace team_viewer_manager.TeamViewer {
                                 UserId = share.userid,
                                 Name = share.name,
                                 Permissions = this.convertToPermission_(sharePermissions),
-                                IsPending = share.pending,
+                                IsPending = share.pending ?? false,
                             });
                         }
                     }
